@@ -1,0 +1,4 @@
+venv/
+thesis/
+__pycache__/
+*.json
