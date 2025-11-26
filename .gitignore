@@ -3,4 +3,6 @@ thesis/
 __pycache__/
 *.json
 *.csv
+*.xlsx
+!book.xlsx
 
