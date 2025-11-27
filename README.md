@@ -37,8 +37,8 @@ In today's dynamic e-commerce landscape, maintaining a competitive edge requires
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-username/pricetracker.git
-    cd pricetracker
+    https://github.com/saifxyzyz/Retail-Radar.git
+    cd Retail-Radar
     ```
 2.  **Install the dependencies:**
     ```bash
