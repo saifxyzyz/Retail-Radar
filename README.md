@@ -37,7 +37,7 @@ In today's dynamic e-commerce landscape, maintaining a competitive edge requires
 
 1.  **Clone the repository:**
     ```bash
-    https://github.com/saifxyzyz/Retail-Radar.git
+    git clone https://github.com/saifxyzyz/Retail-Radar.git
     cd Retail-Radar
     ```
 2.  **Install the dependencies:**
