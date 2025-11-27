@@ -4,10 +4,10 @@ import json
 import openpyxl
 import time
 import csv
+import xlsxwriter
+from datetime import datetime
 
 def track_price(product):
-    time.sleep(10)
-    print("--- Well Rested ---")
     params = {
         "engine": "google_shopping",
         "q": product,
@@ -32,13 +32,13 @@ def extract_main_file(file_name: str) -> dict[str, list[str]]:
     Args:
         file_name: The path to the .xlsx file (e.g., "book.xlsx").
     """
-    time.sleep(10)
     print(f"\n[TOOL] Extracting products from {file_name}...")
     try:
         # Load the workbook using openpyxl
         main_data = openpyxl.load_workbook(file_name, data_only=True)
         sheet = main_data.active
         product_names = []
+        product_prices = ["My Prices"]
         # Iterate through the 3rd column (C)
         for namerow in sheet.iter_rows(min_col=3, max_col=3):
             cell = namerow[0]
@@ -46,46 +46,43 @@ def extract_main_file(file_name: str) -> dict[str, list[str]]:
             # Filter out empty cells or headers if necessary
             if product_name and isinstance(product_name, str) and product_name.lower() != "product name":
                 product_names.append(product_name)
-        print(f"[TOOL] Found {len(product_names)} products: {product_names}")
-        # Return the dictionary format required by the ADK
-        return {"products": product_names}
+        
+        for namerow in sheet.iter_rows(min_col=4, max_col=4):
+            cell = namerow[0]
+            product_price = cell.value
+            # Filter out empty cells or headers if necessary
+            if product_price and isinstance(product_price, int):
+                product_prices.append(product_price)
+        fin_dict = dict(zip(product_names, product_prices))
+        print(f"[TOOL] Found {len(product_names)} products: {product_names} and {len(product_prices)} product prices: {product_prices}, final dict: {fin_dict}")
+
+        return fin_dict
 
     except Exception as e:
         print(f"[ERROR] Failed to read Excel file: {e}")
         return {"products": [], "error": str(e)}
-# def extract_main_file(path_of_mainfile):
-#     main_data = openpyxl.load_workbook(path_of_mainfile, data_only=True)
-#     sheet = main_data.active
-#     prod = {}
-#     for namerow in sheet.iter_rows(min_col=3, max_col=3):
-#         n_cells = namerow[0]
-#         product_name = n_cells.value
-#         product_row = n_cells.row
-#         prod[product_row] = product_name
-#     return prod
-#
+extract_main_file('book.xlsx')
 
 def save_search(data_json: str) -> dict[str, str]:
     """
     Saves the final calculated product data to a CSV file.
-    
     Args:
         data_json: A JSON string. The agent usually sends a list of objects 
                    like: '[{"Product": "Laptop", "Average Price": 50000}, ...]'
     """
     print(f"\n[TOOL] Saving final report...")
-    filename = "final_market_analysis.csv"
+    now = datetime.now()
+    current_datetime = now.strftime("%Y%m%d_%H%M%S")
+    filename = f"final_market_analysis_{current_datetime}.xlsx"
 
     try:
         # 1. Parse the incoming JSON string
         data = json.loads(data_json)
-        
         # 2. Normalize the data (Ensure it is a list of dictionaries)
         # Sometimes the agent wraps the list in a key like {"products": [...]}
         if isinstance(data, dict):
             # Take the first value found in the dict (e.g., the list inside "products")
             data = list(data.values())[0]
-            
         if not isinstance(data, list):
             # If it's a single item, wrap it in a list
             data = [data]
@@ -96,13 +93,24 @@ def save_search(data_json: str) -> dict[str, str]:
 
         # 3. Write to CSV
         # We dynamically get headers from the keys of the first item (e.g., "Product Name", "Average Price")
-        keys = data[0].keys()
-        
-        with open(filename, 'w', newline='', encoding='utf-8') as output_file:
-            dict_writer = csv.DictWriter(output_file, fieldnames=keys)
-            dict_writer.writeheader()
-            dict_writer.writerows(data)
+        fieldnames = data[0].keys()
+        #
+        # with open(filename, 'w', newline='', encoding='utf-8') as output_file:
+        #     dict_writer = csv.DictWriter(output_file, fieldnames=keys)
+        #     dict_writer.writeheader()
+        #     dict_writer.writerows(data)
+        #
+        workbook = xlsxwriter.Workbook(filename)
+        worksheet = workbook.add_worksheet()
+        for col_num, field in enumerate(fieldnames):
+            worksheet.write(0, col_num, field)
 
+        row_num = 1 
+        for row_data in data:
+            for col_num, field in enumerate(fieldnames):
+                worksheet.write(row_num, col_num, row_data.get(field, ""))
+            row_num += 1
+        workbook.close()
         print(f"[SUCCESS] File saved as '{filename}' with {len(data)} rows.")
         return {
             "status": "Success", 

@@ -20,13 +20,14 @@ search_agent = Agent(
     model = Gemini(model=GEMINI_MODEL, retry_options = retry_config),
     name = "search_assistant",
     instruction="""You are a skilled data analyst, your purpose is to:
-        1. fetch the product names using 'extract_main_file' tool, when using this tool, a dictionary will be returned where all the values are the products, path to main file is book.xlsx
+        1. fetch the product names and prices using 'extract_main_file' tool, path to main file is book.xlsx
         2. fetch the prices of the products using the track_price tool
         2. filter out the shady products that are either on emi, refurbished or have an insanely low price compared to others
         3. The fetched information will be in JSON format
-        5. I want you to calculate the average price of the products and pass the json data to the 'save_search' tool
+        5. I want you to calculate the average price of the products and pass the json data included the listing price retrieved using extract_main_file and the
+        calculated price to the 'save_search' tool
 
-        IMPORTANT CSV RULES:
+        IMPORTANT XLSX RULES:
         - Do NOT use commas inside the Price column numbers (e.g. write 70000, NOT ₹70,000).
         - The price column must only contain numerical values, if the price column contains any other value, ignore the whole row
         - If a price has a comma, Excel will break the file. Remove it.
