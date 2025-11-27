@@ -19,37 +19,52 @@ retry_config = types.HttpRetryOptions(
 search_agent = Agent(
     model = Gemini(model=GEMINI_MODEL, retry_options = retry_config),
     name = "search_assistant",
-    instruction="""You are a skilled data analyst, your purpose is to:
-        1. fetch the product names and prices using 'extract_main_file' tool, path to main file is book.xlsx
-        2. fetch the prices of the products using the track_price tool
-        2. filter out the shady products that are either on emi, refurbished or have an insanely low price compared to others
-        3. The fetched information will be in JSON format
-        5. I want you to calculate the average price of the products and pass the json data included the listing price retrieved using extract_main_file and the
-        calculated price to the 'save_search' tool
+    instruction="""You are a granular Market Research Orchestrator. Follow this strict execution plan:
 
-        IMPORTANT XLSX RULES:
-        - Do NOT use commas inside the Price column numbers (e.g. write 70000, NOT ₹70,000).
-        - The price column must only contain numerical values, if the price column contains any other value, ignore the whole row
-        - If a price has a comma, Excel will break the file. Remove it.
+    PHASE 1: INVENTORY LOADING
+    1. Call 'extract_main_file' (file: 'book.xlsx') to get the list of products and their internal costs.
+
+    PHASE 2: MARKET DISCOVERY (CRITICAL: ITERATION REQUIRED)
+    2. You must now loop through EVERY single product found in Phase 1. 
+       - For EACH product, call the 'track_price' tool individually.
+       - You must wait for the tool to return the list of competitor prices for that specific product.
+       - DO NOT skip any products. If there are 5 products, you must call 'track_price' 5 times.
+
+    PHASE 3: DATA REFINEMENT & CALCULATION
+    3. For EACH product's specific search results:
+       - Filter out outliers (refurbished/EMI/illogical prices).
+       - Calculate the 'Market Average' strictly based on the NEW data fetched from 'track_price'. 
+       - DO NOT average the prices from the original Excel file.
+       - DO NOT calculate one global average for all products; I need one average PER product.
+
+    PHASE 4: REPORTING
+    4. Compile a final JSON list containing:
+       - Product Name
+       - Original Listing Price (from Phase 1)
+       - Market Average Price (calculated in Phase 3)
+       - Status (e.g., "Overpriced" if Listing > Market Average)
+    5. Pass this final JSON to 'save_search'.
+
+    IMPORTANT DATA RULES:
+    - Ignore rows with non-numerical prices in the source file.
+    - Remove commas from numbers before processing.
         """,
     tools=[extract_main_file, track_price, save_search]
 )
-#
-# analyst_agent = Agent(
-#     name="analyst",
-#     model= GEMINI_MODEL,
-#     Instruction= """You are a skilled business analyst, your purpose is to take the response from
-#     the search agent and advice the user on whether to buy the product or not"""
-# )
+
+analyst_agent = Agent(
+    name="analyst",
+    model= GEMINI_MODEL,
+    # Instruction= """You are a skilled business analyst, you look into the latest excel file in the verdict folder and generate a response regarding the prices of each of the products
+    # you suggest the end user whether they should increase or decrease their current price, after comparing the current price with the market average price"""
+)
 
 
 async def main_async():
     session_id = "session-1"
     user_id = "user-1"
     app_name = "price-tracker"
-    # user_input = input("What product do you want me to look for? ")
     runner = InMemoryRunner(agent=search_agent, app_name=app_name)
-    # usr_msg = Content(parts=[Part(text=user_input)])
     print("--- preparing Agent ---")
     await runner.session_service.create_session(
         session_id = session_id,
