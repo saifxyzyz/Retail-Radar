@@ -12,6 +12,7 @@ from dateutil import parser as dateparser
 import requests
 import selectorlib
 from duckduckgo_search import DDGS
+import glob
 load_dotenv()
 
 def track_price(product):
@@ -139,6 +140,50 @@ def save_search(data_json: str) -> dict[str, str]:
     except Exception as e:
         print(f"[ERROR] File Write Failed: {e}")
         return {"status": "Error", "message": str(e)}
+
+
+def file_to_analyze():
+
+    folder_path = "verdict"
+    file_pattern = os.path.join(folder_path, "final_market_analysis_*.xlsx")
+    list_of_files = glob.glob(file_pattern)
+
+    if not list_of_files:
+        print("[ERROR] No analysis files found")
+        exit()
+    latest_file = max(list_of_files, key=os.path.getctime)
+    print(f"[INFO] Processing latest file: {latest_file}")
+    try:
+        main_data = openpyxl.load_workbook(latest_file, data_only=True)
+        sheet = main_data.active
+        rows = list(sheet.iter_rows(values_only=True))
+        if not rows:
+            print("[ERROR] Sheet is empty")
+            return {}
+        headers = rows[0]
+        name_col_index = -1
+        possible_keys = ['Product Name', 'Product', 'name', 'title', 'product_name']
+        for index, header in enumerate(headers):
+            if header and str(header).strip() in possible_keys:
+                name_col_index = index
+                break
+        if name_col_index == -1:
+            print(f"[ERROR] Could not find a 'Product Name' column in headers: {headers}")
+            return {}
+        market_data = {}
+        for row in rows[1:]:
+            key = row[name_col_index]
+            if not key:
+                continue
+            row_data = {}
+            for i, cell_value in enumerate(row):
+                if i != name_col_index:
+                    header_name = headers[i] if headers[i] else f"cols{i}"
+                    row_data[header_name] = cell_value
+            market_data[key] = row_data
+        return market_data
+    except Exception:
+        print(f"[Error] Met an Exception {Exception}")
 
 # Archived for sentiment analysis
 # extractor = selectorlib.Extractor.from_yaml_file('selectors.yml')

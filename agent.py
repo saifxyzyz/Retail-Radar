@@ -9,6 +9,9 @@ import re
 import os
 from google.genai import types
 from google.adk.models.google_llm import Gemini
+from my_tools import file_to_analyze
+from google.adk.agents import SequentialAgent
+
 GEMINI_MODEL = "gemini-2.5-flash"
 retry_config = types.HttpRetryOptions(
     attempts=5,  # Maximum retry attempts
@@ -57,16 +60,23 @@ search_agent = Agent(
 analyst_agent = Agent(
     name="analyst",
     model= GEMINI_MODEL,
-    # Instruction= """You are a skilled business analyst, you look into the latest excel file in the verdict folder and generate a response regarding the prices of each of the products
-    # you suggest the end user whether they should increase or decrease their current price, after comparing the current price with the market average price"""
+    instruction = """ You are an expert analyst for a retail electronic store, use the file_to_analyze tools to retrieve data and repond with a breif report on each
+    listed product, make suggestions to the retail store, for example if the market price of a product is lower than the listed price of the retail store, suggest the store to increase their \
+    listed price, also look into the ratings to know if the product is good and the number of reviews to get to know the demand of the product""",
+    tools=[file_to_analyze]
 )
 
+root_agent = SequentialAgent(
+    name = "root_agent",
+    sub_agents = [search_agent, analyst_agent],
+    description = "Manages the execution of the sub agents"
+)
 
 async def main_async():
     session_id = "session-1"
     user_id = "user-1"
     app_name = "price-tracker"
-    runner = InMemoryRunner(agent=search_agent, app_name=app_name)
+    runner = InMemoryRunner(agent=root_agent, app_name=app_name)
     print("--- preparing Agent ---")
     await runner.session_service.create_session(
         session_id = session_id,
