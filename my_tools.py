@@ -8,7 +8,10 @@ import xlsxwriter
 from datetime import datetime
 import os
 from dotenv import load_dotenv
-
+from dateutil import parser as dateparser
+import requests
+import selectorlib
+from duckduckgo_search import DDGS
 load_dotenv()
 
 def track_price(product):
@@ -35,6 +38,8 @@ def track_price(product):
                 "price_numeric": item.get("extracted_price"),
                 "store": item.get("source"),
                 "link": item.get("product_link"),
+                "reviews": item.get("reviews"),
+                "rating": item.get("rating"),
                 "condition": item.get("second_hand_condition", "new")
             }
             cleaned_data.append(cleaned_item)
@@ -80,7 +85,6 @@ def extract_main_file(file_name: str) -> dict[str, list[str]]:
     except Exception as e:
         print(f"[ERROR] Failed to read Excel file: {e}")
         return {"products": [], "error": str(e)}
-extract_main_file('book.xlsx')
 
 def save_search(data_json: str) -> dict[str, str]:
     """
@@ -95,29 +99,19 @@ def save_search(data_json: str) -> dict[str, str]:
     filename = f"final_market_analysis_{current_datetime}.xlsx"
 
     try:
-        # 1. Parse the incoming JSON string
         data = json.loads(data_json)
-        # 2. Normalize the data (Ensure it is a list of dictionaries)
-        # Sometimes the agent wraps the list in a key like {"products": [...]}
         if isinstance(data, dict):
-            # Take the first value found in the dict (e.g., the list inside "products")
             data = list(data.values())[0]
         if not isinstance(data, list):
-            # If it's a single item, wrap it in a list
             data = [data]
 
         if not data:
             print("[TOOL] Warning: No data to save.")
             return {"status": "Error", "message": "Data list was empty."}
 
-        # 3. Write to CSV
         # We dynamically get headers from the keys of the first item (e.g., "Product Name", "Average Price")
         fieldnames = data[0].keys()
-        #
-        # with open(filename, 'w', newline='', encoding='utf-8') as output_file:
-        #     dict_writer = csv.DictWriter(output_file, fieldnames=keys)
-        #     dict_writer.writeheader()
-        #     dict_writer.writerows(data)
+        print(fieldnames)
         folder = "verdict"
         if not os.path.exists(folder):
             os.mkdir(folder)
@@ -146,3 +140,182 @@ def save_search(data_json: str) -> dict[str, str]:
         print(f"[ERROR] File Write Failed: {e}")
         return {"status": "Error", "message": str(e)}
 
+# Archived for sentiment analysis
+# extractor = selectorlib.Extractor.from_yaml_file('selectors.yml')
+#
+# def scrape_gsmarena_reviews(product_name):
+#     # GSMArena is much friendlier, but we still use good headers
+#     headers = {
+#         'authority': 'www.amazon.in',
+#         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+#         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+#         'referer': 'https://www.amazon.in/'
+#     }
+#
+#     search_query = product_name.replace(" ", "+")
+#     url = f"https://www.amazon.in/{search_query}"
+#     print(f"[SCRAPE TOOL] Searching for {product_name}...")
+#     try:
+#         r = requests.get(url, headers=headers, timeout=10)
+#     except Exception as e:
+#         print(f"Network Error: {e}")
+#         return None
+#
+#     if r.status_code != 200:
+#         print(f"Blocked or Error. Status Code: {r.status_code}")
+#         return None
+#
+#     # 2. Extract Data
+#     data = extractor.extract(r.text, base_url=url)
+#     print(data)
+#
+# # --- TEST IT ---
+# # Note: I'm using a REAL URL for the iPhone 15 Pro Max (iPhone 17 isn't out/reviewed yet)
+# test_url = "https://www.amazon.com/apple_iphone_15_pro_max-reviews-12548.php"
+# from seleniumbase import SB
+# from dateutil import parser as dateparser
+#
+# # def get_reviews_sb(product_name):
+# #     """
+# #     Uses SeleniumBase with Undetected ChromeDriver (uc=True) 
+# #     to bypass Cloudflare and scrape GSMArena.
+# #     """
+# #     # 1. Initialize with uc=True (Undetected Mode)
+# #     # headless=False is safer for bypassing captchas initially. 
+# #     # If you need it hidden, try headless=True, but it's slightly more detectable.
+# #     with SB(uc=True, test=True, headless=False) as sb: 
+# #
+# #         print(f"🤖 SB Browser launched. Searching for: {product_name}...")
+# #
+# #         # --- STEP 1: SEARCH ---
+# #         search_query = product_name.replace(" ", "+")
+# #         url = f"https://www.amazon.in/{search_query}"
+# #
+# #         sb.activate_cdp_mode(url) # Special CDP mode often helps with loading
+# #         sb.open(url)
+# #
+# #         # Handle "Verify you are human" checks automatically if they appear
+# #         if sb.is_element_visible('iframe[title*="Cloudflare"]'):
+# #             print("CAPTCHA detected. Attempting automatic bypass...")
+# #             sb.uc_gui_click_captcha() # SB's built-in captcha clicker
+# #
+# #         # Scenario A: Redirected directly to product
+# #         if "res.php3" not in sb.get_current_url():
+# #             print(f"Direct redirect to: {sb.get_current_url()}")
+# #
+# #         # Scenario B: Search Results List
+# #         elif sb.is_element_visible("div.makers ul li a"):
+# #             print("Clicking top result...")
+# #             sb.click("div.makers ul li a")
+# #
+# #         else:
+# #             print("❌ No results found.")
+# #             return None
+# #
+# #         # --- STEP 2: NAVIGATE TO REVIEWS ---
+# #         # Convert Specs URL to Reviews URL
+# #         current_url = sb.get_current_url()
+# #
+# #         return current_url
+# #
+# from bs4 import BeautifulSoup
+# def get_ebay_reviews(product_name):
+#     session = requests.Session()
+#     session.headers.update({
+#         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+#         'Accept-Language': 'en-US,en;q=0.9',
+#     })
+#
+#     print(f"🔎 Searching eBay for: {product_name}...")
+#
+#     # --- STEP 1: SEARCH & FIND PRODUCT ---
+#     search_url = f"https://www.ebay.com/sch/i.html?_nkw={product_name.replace(' ', '_')}&_sacat=0"
+#
+#     try:
+#         r = session.get(search_url)
+#         soup = BeautifulSoup(r.text, 'html.parser')
+#
+#         # Find the first item that likely has reviews (look for star ratings in search results)
+#         # eBay search results usually have a specific class for items
+#         items = soup.select('li.s-item')
+#
+#         review_page_url = None
+#
+#         for item in items:
+#             # Skip "Shop on eBay" header item
+#             if "s-item__title--has-tags" in str(item): continue
+#
+#             link_tag = item.select_one('a.s-item__link')
+#             if not link_tag: continue
+#
+#             item_url = link_tag['href']
+#
+#             # Optimization: We need to go to the item page to find the "See all reviews" link.
+#             # However, some eBay items are just "Listings" without a catalog product.
+#             # We will try the first valid organic result.
+#             if "ebay.com/itm/" in item_url:
+#                 print(f"   Checking item: {item.select_one('.s-item__title').text[:40]}...")
+#
+#                 # Go to Item Page
+#                 r_item = session.get(item_url)
+#                 soup_item = BeautifulSoup(r_item.text, 'html.parser')
+#
+#                 # --- STEP 2: FIND "SEE ALL REVIEWS" LINK ---
+#                 # This is the golden ticket. We look for the link that takes us to the /urw/ page.
+#                 # It usually text like "See all 43 reviews"
+#
+#                 # Try Selector A (Modern Layout)
+#                 review_link_tag = soup_item.select_one('a[href*="/urw/"]')
+#
+#                 # Try Selector B (Classic Layout - looking for text)
+#                 if not review_link_tag:
+#                     review_link_tag = soup_item.find('a', string=lambda t: t and "See all" in t and "reviews" in t)
+#
+#                 if review_link_tag:
+#                     review_page_url = review_link_tag['href']
+#                     print(f"✅ Found Dedicated Review URL: {review_page_url}")
+#                     break
+#
+#         if not review_page_url:
+#             print("❌ Could not find a product with a dedicated review page (Catalog ID missing).")
+#             print("   Tip: Try a generic product name like 'Sony WH-1000XM5' instead of a specific listing.")
+#             return None
+#
+#         # --- STEP 3: SCRAPE REVIEWS ---
+#         print("⬇️ Downloading reviews...")
+#         r_reviews = session.get(review_page_url)
+#
+#         # Use SelectorLib to extract data
+#         data = extractor.extract(r_reviews.text, base_url=review_page_url)
+#
+#         # --- STEP 4: CLEAN DATA ---
+#         cleaned_reviews = []
+#         if data and data.get('reviews'):
+#             for r in data['reviews']:
+#                 if not r: continue
+#
+#                 # Clean Rating (e.g., "5 out of 5 stars" -> "5")
+#                 if r.get('rating'):
+#                     r['rating'] = r['rating'].split(' ')[0]
+#
+#                 # Clean Date
+#                 if r.get('date'):
+#                     try:
+#                         r['date'] = dateparser.parse(r['date']).strftime('%d %b %Y')
+#                     except:
+#                         pass
+#
+#                 cleaned_reviews.append(r)
+#
+#             data['reviews'] = cleaned_reviews
+#             data['count'] = len(cleaned_reviews)
+#             print(data)
+#         else:
+#             print("⚠️ Page loaded, but selectorlib found no reviews. (Selectors might need update)")
+#             return None
+#
+#     except Exception as e:
+#         print(f"Error: {e}")
+#         return None
+#
+# get_ebay_reviews("Sony WH-1000XM5")

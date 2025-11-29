@@ -39,10 +39,12 @@ search_agent = Agent(
 
     PHASE 4: REPORTING
     4. Compile a final JSON list containing:
-       - Product Name
-       - Original Listing Price (from Phase 1)
-       - Market Average Price (calculated in Phase 3)
-       - Status (e.g., "Overpriced" if Listing > Market Average)
+        - Product Name
+        - Original Listing Price (from Phase 1)
+        - Market Average Price (calculated in Phase 3)
+        - Status (e.g., "Overpriced" if Listing > Market Average)
+        - Maximum Number of reviews
+        - Average of all ratings
     5. Pass this final JSON to 'save_search'.
 
     IMPORTANT DATA RULES:
