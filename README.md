@@ -37,15 +37,15 @@ In today's dynamic e-commerce landscape, maintaining a competitive edge requires
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-username/pricetracker.git
-    cd pricetracker
+    git clone https://github.com/saifxyzyz/Retail-Radar.git
+    cd Retail-Radar
     ```
 2.  **Install the dependencies:**
     ```bash
     pip install -r requirements.txt
     ```
 3.  **Add your SerpApi API key:**
-    *   Open `my_tools.py` and replace `"YOUR_SERPAPI_API_KEY"` with your actual SerpApi API key.
+    *   Create a `.env` file, paste this `SERPAPI_KEY= #YOUR_API_KEY_HERE`, and replace the comment with your actual [SerpApi](https://serpapi.com/) key
 4.  **Prepare your product list:**
     *   Open `book.xlsx` and replace the sample data with your own product list. Make sure to follow the specified format.
 5.  **Run the agent:**
