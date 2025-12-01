@@ -1,12 +1,7 @@
-from dis import Instruction
-from os import name
-from requests import session
 from google.adk.agents import Agent
 from google.adk.runners import InMemoryRunner
 from my_tools import track_price, extract_main_file, save_search
 import asyncio
-import re
-import os
 from google.genai import types
 from google.adk.models.google_llm import Gemini
 from my_tools import file_to_analyze
@@ -79,43 +74,43 @@ async def main_async():
     runner = InMemoryRunner(agent=root_agent, app_name=app_name)
     print("--- preparing Agent ---")
     await runner.session_service.create_session(
-        session_id = session_id,
-        user_id = user_id,
-        app_name = app_name
+        session_id=session_id,
+        user_id=user_id,
+        app_name=app_name
     )
     query = "start the product analysis pipeline immediately"
     print(f"User Query: {query}")
     content = types.Content(role='user', parts=[types.Part(text=query)])
     print("--- Session Created ---")
+    final_analysis = None
     async for event in runner.run_async(
-        user_id = user_id,
-        session_id = session_id,
-        new_message = content
+        user_id=user_id,
+        session_id=session_id,
+        new_message=content
     ):
-        print(event)
-        # if hasattr(event, 'content') and event.content and event.content.parts:
-        #     for part in event.content.parts:
-        #         if part.text:
-        #             match = re.search(r"```csv\n(.*?)\n```", part.text, re.DOTALL)
-        #             if match:
-        #                 csv_content = match.group(1)
-        #                 folder = "thesis"
-        #                 count = 0
-        #                 filename = f"{user_input.replace(' ', '_')}_prices.csv"
-        #                 finalfilepath = os.path.join(folder, filename)
-        #                 if not os.path.exists(folder):
-        #                     os.mkdir(folder)
-        #                 while os.path.exists(finalfilepath):
-        #                     count += 1
-        #                     filename = f"{user_input.replace(' ', '_')}_prices{count}.csv"
-        #                     finalfilepath = os.path.join(folder, filename)
-        #
-        #                 try:
-        #                     with open(finalfilepath, "w", encoding="utf-8-sig") as f:
-        #                         f.write(csv_content)
-        #                     print(f"\n✅ SUCCESS: Data saved to {filename}!")
-        #                 except Exception as e:
-        #                     print(f"❌ Error saving file: {e}")
+        if event.content and event.content.parts:
+            part = event.content.parts[0]
+            if part.function_call:
+                tool_name = part.function_call.name
+                args = part.function_call.args
+                product_arg = args.get('product')
+                if tool_name == "track_price":
+                    print(f"[{event.author}]: Calling Tool -> {tool_name} for {product_arg}")
+                else:
+                    print(f"[{event.author}]: Calling Tool -> {tool_name}")
+        elif part.text:
+            print(f"[{event.author}]: {part.text[:100]}...")
+            
+        # Capture the final output from the analyst
+        if event.author == "analyst" and event.content:
+            final_analysis = event.content.parts[0].text
+
+    print("\n--- FINAL REPORT ---")
+    print(final_analysis)
+    #     print(event)
+    #     if event.author == "analyst" and event.content:
+    #         final_analysis = event.content.parts[0].text
+    # return final_analysis
 if __name__ == "__main__":
     asyncio.run(main_async())
 

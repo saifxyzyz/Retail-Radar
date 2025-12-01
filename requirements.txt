@@ -1,0 +1,8 @@
+google-api-python-client
+serpapi
+openpyxl
+xlsxwriter
+python-dotenv
+fastapi
+uvicorn
+websockets

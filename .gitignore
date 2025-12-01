@@ -7,4 +7,6 @@ __pycache__/
 !book.xlsx
 verdict/
 *.env
+.git/
+.gemini/
 

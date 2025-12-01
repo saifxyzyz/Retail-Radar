@@ -1,17 +1,10 @@
-from itertools import product
 from serpapi import GoogleSearch
 import json
 import openpyxl
-import time
-import csv
 import xlsxwriter
 from datetime import datetime
 import os
 from dotenv import load_dotenv
-from dateutil import parser as dateparser
-import requests
-import selectorlib
-from duckduckgo_search import DDGS
 import glob
 load_dotenv()
 
@@ -112,7 +105,6 @@ def save_search(data_json: str) -> dict[str, str]:
 
         # We dynamically get headers from the keys of the first item (e.g., "Product Name", "Average Price")
         fieldnames = data[0].keys()
-        print(fieldnames)
         folder = "verdict"
         if not os.path.exists(folder):
             os.mkdir(folder)
